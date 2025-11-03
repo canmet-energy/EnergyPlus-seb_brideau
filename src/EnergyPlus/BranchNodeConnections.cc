@@ -1322,16 +1322,12 @@ void CheckNodeConnections(EnergyPlusData &state, bool &ErrorsFound)
     //  can have multiple inlets with one outlet or vice versa but cannot have multiple both inlet and outlet
     if (state.dataBranchNodeConnections->NumOfNodeConnections > 0) {
         int MaxFluidStream = static_cast<int>(maxval(state.dataBranchNodeConnections->NodeConnections, &NodeConnectionDef::FluidStream));
-        Array1D_int FluidStreamInletCount;
-        Array1D_int FluidStreamOutletCount;
+        std::vector<int> fluidStreamInletCount(MaxFluidStream, 0);
+        std::vector<int> fluidStreamOutletCount(MaxFluidStream, 0);
         Array1D_int NodeObjects;
         Array1D_bool FluidStreamCounts;
-        FluidStreamInletCount.allocate(MaxFluidStream);
-        FluidStreamOutletCount.allocate(MaxFluidStream);
         FluidStreamCounts.allocate(MaxFluidStream);
         NodeObjects.allocate(state.dataBranchNodeConnections->NumOfNodeConnections + 1);
-        FluidStreamInletCount = 0;
-        FluidStreamOutletCount = 0;
         NodeObjects = 0;
         FluidStreamCounts = false;
         // Following code relies on node connections for single object type/name being grouped together
@@ -1355,8 +1351,8 @@ void CheckNodeConnections(EnergyPlusData &state, bool &ErrorsFound)
         // NodeObjects now contains each consecutive object...
         for (Object = 1; Object <= NumObjects - 1; ++Object) {
             IsValid = true;
-            FluidStreamInletCount = 0;
-            FluidStreamOutletCount = 0;
+            std::fill(fluidStreamInletCount.begin(), fluidStreamInletCount.end(), 0);
+            std::fill(fluidStreamOutletCount.begin(), fluidStreamOutletCount.end(), 0);
             FluidStreamCounts = false;
             int Loop1 = NodeObjects(Object);
             if (state.dataBranchNodeConnections->NumOfNodeConnections < 2) {
@@ -1366,22 +1362,22 @@ void CheckNodeConnections(EnergyPlusData &state, bool &ErrorsFound)
                 continue;
             }
             if (state.dataBranchNodeConnections->NodeConnections(Loop1).ConnectionType == ConnectionType::Inlet) {
-                ++FluidStreamInletCount(static_cast<int>(state.dataBranchNodeConnections->NodeConnections(Loop1).FluidStream));
+                ++fluidStreamInletCount[static_cast<int>(state.dataBranchNodeConnections->NodeConnections(Loop1).FluidStream) - 1];
             } else if (state.dataBranchNodeConnections->NodeConnections(Loop1).ConnectionType == ConnectionType::Outlet) {
-                ++FluidStreamOutletCount(static_cast<int>(state.dataBranchNodeConnections->NodeConnections(Loop1).FluidStream));
+                ++fluidStreamOutletCount[static_cast<int>(state.dataBranchNodeConnections->NodeConnections(Loop1).FluidStream) - 1];
             }
             for (int Loop2 = Loop1 + 1; Loop2 <= NodeObjects(Object + 1) - 1; ++Loop2) {
                 if (state.dataBranchNodeConnections->NodeConnections(Loop2).ObjectIsParent) {
                     continue;
                 }
                 if (state.dataBranchNodeConnections->NodeConnections(Loop2).ConnectionType == ConnectionType::Inlet) {
-                    ++FluidStreamInletCount(static_cast<int>(state.dataBranchNodeConnections->NodeConnections(Loop2).FluidStream));
+                    ++fluidStreamInletCount[static_cast<int>(state.dataBranchNodeConnections->NodeConnections(Loop2).FluidStream) - 1];
                 } else if (state.dataBranchNodeConnections->NodeConnections(Loop2).ConnectionType == ConnectionType::Outlet) {
-                    ++FluidStreamOutletCount(static_cast<int>(state.dataBranchNodeConnections->NodeConnections(Loop2).FluidStream));
+                    ++fluidStreamOutletCount[static_cast<int>(state.dataBranchNodeConnections->NodeConnections(Loop2).FluidStream) - 1];
                 }
             }
             for (int Loop2 = 1; Loop2 <= MaxFluidStream; ++Loop2) {
-                if (FluidStreamInletCount(Loop2) > 1 && FluidStreamOutletCount(Loop2) > 1) {
+                if (fluidStreamInletCount[Loop2 - 1] > 1 && fluidStreamOutletCount[Loop2 - 1] > 1) {
                     IsValid = false;
                     FluidStreamCounts(Loop2) = true;
                 }
@@ -1404,8 +1400,6 @@ void CheckNodeConnections(EnergyPlusData &state, bool &ErrorsFound)
                 ErrorsFound = true;
             }
         }
-        FluidStreamInletCount.deallocate();
-        FluidStreamOutletCount.deallocate();
         FluidStreamCounts.deallocate();
         NodeObjects.deallocate();
     }
@@ -2074,8 +2068,9 @@ void SetUpCompSets(EnergyPlusData &state,
             if (InletNode != state.dataBranchNodeConnections->CompSets(Count).InletNodeName) {
                 continue;
                 // If parent type is undefined then no error
-            } else if ((ParentTypeEnum == ConnectionObjectType::Undefined) ||
-                       (state.dataBranchNodeConnections->CompSets(Count).ParentObjectType == ConnectionObjectType::Undefined)) {
+            }
+            if ((ParentTypeEnum == ConnectionObjectType::Undefined) ||
+                (state.dataBranchNodeConnections->CompSets(Count).ParentObjectType == ConnectionObjectType::Undefined)) {
                 // If node name is undefined then no error
             } else if (InletNode != undefined) {
                 // If the matching node name does not belong to the parent or child object, then error
@@ -2125,8 +2120,9 @@ void SetUpCompSets(EnergyPlusData &state,
             if (OutletNode != state.dataBranchNodeConnections->CompSets(Count).OutletNodeName) {
                 continue;
                 // If parent type is undefined then no error
-            } else if ((ParentTypeEnum == ConnectionObjectType::Undefined) ||
-                       (state.dataBranchNodeConnections->CompSets(Count).ParentObjectType == ConnectionObjectType::Undefined)) {
+            }
+            if ((ParentTypeEnum == ConnectionObjectType::Undefined) ||
+                (state.dataBranchNodeConnections->CompSets(Count).ParentObjectType == ConnectionObjectType::Undefined)) {
                 // If node name is undefined then no error
             } else if (OutletNode != undefined) {
                 if ((ParentTypeEnum == state.dataBranchNodeConnections->CompSets(Count).ComponentObjectType) &&
