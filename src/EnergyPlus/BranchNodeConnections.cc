@@ -1324,37 +1324,35 @@ void CheckNodeConnections(EnergyPlusData &state, bool &ErrorsFound)
         int MaxFluidStream = static_cast<int>(maxval(state.dataBranchNodeConnections->NodeConnections, &NodeConnectionDef::FluidStream));
         std::vector<int> fluidStreamInletCount(MaxFluidStream, 0);
         std::vector<int> fluidStreamOutletCount(MaxFluidStream, 0);
-        Array1D_int NodeObjects;
-        Array1D_bool FluidStreamCounts;
-        FluidStreamCounts.allocate(MaxFluidStream);
-        NodeObjects.allocate(state.dataBranchNodeConnections->NumOfNodeConnections + 1);
-        NodeObjects = 0;
-        FluidStreamCounts = false;
+        std::vector<int> nodeObjects(state.dataBranchNodeConnections->NumOfNodeConnections + 1, 0);
+        std::vector<bool> fluidStreamCounts(MaxFluidStream, false);
+
         // Following code relies on node connections for single object type/name being grouped together
         int Object = 1;
         int EndConnect = 0;
         int NumObjects = 2;
-        NodeObjects(1) = 1;
+        nodeObjects[0] = 1;
         while (Object < state.dataBranchNodeConnections->NumOfNodeConnections) {
             if (state.dataBranchNodeConnections->NodeConnections(Object).ObjectType !=
                     state.dataBranchNodeConnections->NodeConnections(Object + 1).ObjectType ||
                 state.dataBranchNodeConnections->NodeConnections(Object).ObjectName !=
                     state.dataBranchNodeConnections->NodeConnections(Object + 1).ObjectName) {
                 EndConnect = Object + 1;
-                NodeObjects(NumObjects) = EndConnect;
+                nodeObjects[NumObjects - 1] = EndConnect;
                 // if (Object + 1 < state.dataBranchNodeConnections->NumOfNodeConnections) ++NumObjects;
                 ++NumObjects;
             }
             ++Object;
         }
-        NodeObjects(NumObjects) = state.dataBranchNodeConnections->NumOfNodeConnections + 1;
+        nodeObjects[NumObjects - 1] = state.dataBranchNodeConnections->NumOfNodeConnections + 1;
         // NodeObjects now contains each consecutive object...
         for (Object = 1; Object <= NumObjects - 1; ++Object) {
             IsValid = true;
             std::fill(fluidStreamInletCount.begin(), fluidStreamInletCount.end(), 0);
             std::fill(fluidStreamOutletCount.begin(), fluidStreamOutletCount.end(), 0);
-            FluidStreamCounts = false;
-            int Loop1 = NodeObjects(Object);
+            std::fill(fluidStreamCounts.begin(), fluidStreamCounts.end(), false);
+
+            int Loop1 = nodeObjects[Object - 1];
             if (state.dataBranchNodeConnections->NumOfNodeConnections < 2) {
                 continue;
             }
@@ -1366,7 +1364,7 @@ void CheckNodeConnections(EnergyPlusData &state, bool &ErrorsFound)
             } else if (state.dataBranchNodeConnections->NodeConnections(Loop1).ConnectionType == ConnectionType::Outlet) {
                 ++fluidStreamOutletCount[static_cast<int>(state.dataBranchNodeConnections->NodeConnections(Loop1).FluidStream) - 1];
             }
-            for (int Loop2 = Loop1 + 1; Loop2 <= NodeObjects(Object + 1) - 1; ++Loop2) {
+            for (int Loop2 = Loop1 + 1; Loop2 <= nodeObjects[Object] - 1; ++Loop2) {
                 if (state.dataBranchNodeConnections->NodeConnections(Loop2).ObjectIsParent) {
                     continue;
                 }
@@ -1379,7 +1377,7 @@ void CheckNodeConnections(EnergyPlusData &state, bool &ErrorsFound)
             for (int Loop2 = 1; Loop2 <= MaxFluidStream; ++Loop2) {
                 if (fluidStreamInletCount[Loop2 - 1] > 1 && fluidStreamOutletCount[Loop2 - 1] > 1) {
                     IsValid = false;
-                    FluidStreamCounts(Loop2) = true;
+                    fluidStreamCounts[Loop2 - 1] = true;
                 }
             }
             if (!IsValid) {
@@ -1392,7 +1390,7 @@ void CheckNodeConnections(EnergyPlusData &state, bool &ErrorsFound)
 
                 ShowContinueError(state, "Object has multiple connections on both inlet and outlet fluid streams.");
                 for (int Loop2 = 1; Loop2 <= MaxFluidStream; ++Loop2) {
-                    if (FluidStreamCounts(Loop2)) {
+                    if (fluidStreamCounts[Loop2 - 1]) {
                         ShowContinueError(state, format("...occurs in Fluid Stream [{}].", Loop2));
                     }
                 }
@@ -1400,8 +1398,6 @@ void CheckNodeConnections(EnergyPlusData &state, bool &ErrorsFound)
                 ErrorsFound = true;
             }
         }
-        FluidStreamCounts.deallocate();
-        NodeObjects.deallocate();
     }
 
     // Check 11 - zone nodes may not be used as anything else except as a setpoint, sensor or actuator node
@@ -1480,7 +1476,7 @@ bool IsParentObject(EnergyPlusData &state, ConnectionObjectType const ComponentT
     return IsParent;
 }
 
-int WhichParentSet(EnergyPlusData &state, ConnectionObjectType const ComponentType, std::string const &ComponentName)
+int WhichParentSet(const EnergyPlusData &state, ConnectionObjectType const ComponentType, std::string const &ComponentName)
 {
 
     // FUNCTION INFORMATION:
@@ -1572,7 +1568,7 @@ void GetParentData(EnergyPlusData &state,
     }
 }
 
-bool IsParentObjectCompSet(EnergyPlusData &state, ConnectionObjectType const ComponentType, std::string const &ComponentName)
+bool IsParentObjectCompSet(const EnergyPlusData &state, ConnectionObjectType const ComponentType, std::string const &ComponentName)
 {
 
     // FUNCTION INFORMATION:
@@ -1599,7 +1595,7 @@ bool IsParentObjectCompSet(EnergyPlusData &state, ConnectionObjectType const Com
     return IsParent;
 }
 
-int WhichCompSet(EnergyPlusData &state, ConnectionObjectType const ComponentType, std::string const &ComponentName)
+int WhichCompSet(const EnergyPlusData &state, ConnectionObjectType const ComponentType, std::string const &ComponentName)
 {
 
     // FUNCTION INFORMATION:
@@ -1657,7 +1653,7 @@ int GetNumChildren(EnergyPlusData &state, ConnectionObjectType const ComponentTy
     return NumChildren;
 }
 
-void GetComponentData(EnergyPlusData &state,
+void GetComponentData(const EnergyPlusData &state,
                       ConnectionObjectType const ComponentType,
                       std::string const &ComponentName,
                       bool &IsParent, // true or false
