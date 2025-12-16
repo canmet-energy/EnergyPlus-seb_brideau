@@ -129,6 +129,9 @@ elseif(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" O
     endif()
     target_compile_options(project_warnings INTERFACE -Wno-vexing-parse)
     target_compile_options(project_warnings INTERFACE -Wno-invalid-source-encoding)
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 17.0)
+      target_compile_options(project_warnings INTERFACE -Wno-deprecated-literal-operator)
+    endif()
     target_compile_options(project_fp_options INTERFACE -ffp-contract=off)
   endif()
 
