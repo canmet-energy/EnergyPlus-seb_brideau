@@ -66,6 +66,7 @@ build
 /Build*/
 /debug*/
 /release?*/
+.ccache/
 .cppcheck-build-dir
 cppcheck.txt
 
