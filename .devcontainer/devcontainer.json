@@ -18,15 +18,11 @@
 		"UV_LINK_MODE": "copy", // Use copy mode for UV to avoid symlinks in the container
 		"DEVCONTAINER_NODE_VERSION": "22.11.0", // Node.js version installed by install-user-nodejs.sh (override as needed)
 		"DEVCONTAINER_UV_VERSION": "0.8.15", // UV (Python package manager) version installed by install-user-uv.sh
-		"CCACHE_DIR": "/workspace/.ccache",
+		"CCACHE_DIR": "${containerWorkspaceFolder}/.ccache",
 		"CMAKE_BUILD_PARALLEL_LEVEL": "4",
 		"PYTHONDONTWRITEBYTECODE": "1"
 	},
 	
-	// Mount ccache directory for faster rebuilds
-	"mounts": [
-		"source=${localWorkspaceFolder}/.ccache,target=/workspace/.ccache,type=bind,consistency=cached"
-	],
 	
 	// Configure tool-specific properties
 	"customizations": {
